@@ -1,0 +1,54 @@
+# 사천성 아케이드
+
+같은 그림 두 개를 2번 이하로 꺾어서 연결해 지우는 사천성 웹게임입니다.
+빌드 과정 없이 HTML/CSS/JS 파일만으로 동작합니다.
+
+## 기능
+- **50개 스테이지**: 8×4(32패)에서 18×8(144패)까지 점점 커지고, 하트·다이아몬드·도넛·격자 등 18가지 모양이 있습니다. 10, 20, 30, 40, 50스테이지는 꽉 찬 보스판입니다.
+- **모든 판 클리어 보장**: 판을 거꾸로 채워 가는 방식으로 만들어서 어떤 판이든 반드시 다 지울 수 있습니다. 섞기 후에도 마찬가지입니다.
+- **테마 5종**: 원조 사천성(마작패 42종), 귀여운 동물, 과일 바구니, 간식 파티, 꽃과 날씨. 테마가 달라도 같은 스테이지는 같은 판이라 랭킹이 공평합니다.
+- **랭킹 (Firebase)**: 스테이지별 최단 클리어 시간과 종합 순위(많이 깬 순 → 총 시간 순)를 보여 줍니다. 닉네임마다 최고 기록 하나만 저장됩니다.
+- **친구랑 하기**: 4자리 코드로 방을 만들거나 초대 링크로 들어옵니다. 같은 판으로 동시에 대결하고, 상대 진행률을 보면서 채팅할 수 있습니다. 로비에는 전체 채팅방도 있습니다.
+- 힌트(+10초), 섞기(+20초), 되돌리기(+5초), 일시정지(혼자 할 때만), 무한 연습 모드, 효과음, 휴대폰 세로 화면 지원(판이 자동으로 90° 회전)
+
+## 파일 구성
+```
+index.html
+css/style.css
+js/engine.js   게임 규칙, 경로 판정, 판 생성
+js/stages.js   50개 스테이지 정의
+js/tiles.js    테마별 타일 그림
+js/net.js      Firebase REST + 실시간 스트리밍
+js/app.js      화면, 랭킹, 방/채팅
+database.rules.json  (선택) Firebase 보안 규칙 예시
+```
+
+## GitHub → Vercel 배포
+1. 이 폴더를 GitHub 저장소에 올립니다.
+   ```bash
+   git init
+   git add .
+   git commit -m "사천성 게임"
+   git branch -M main
+   git remote add origin https://github.com/<아이디>/<저장소>.git
+   git push -u origin main
+   ```
+2. Vercel → **Add New → Project** → 저장소 선택
+3. Framework Preset은 **Other**로 두고, Build Command와 Output Directory는 비워 둔 채 **Deploy**를 누릅니다.
+
+기존 아카이브 홈페이지 저장소에 넣을 때는 이 폴더를 통째로 `sichuan/` 같은 하위 폴더로 넣고, 홈페이지에서 `/sichuan/`로 링크하면 됩니다. 모든 경로가 상대 경로라 그대로 동작합니다.
+
+> 컴퓨터에서 `index.html`을 더블클릭해도 실행됩니다.
+
+## Firebase 데이터 위치
+- `rankings/sichuan/s01 ~ s50/{닉네임}` : 스테이지별 최고 기록 `{name, time(ms), theme, date, ts, uid}`
+- `sichuan/rooms/{방코드}` : 방 정보와 참가자 진행 상황 (모두 나가면 자동 삭제)
+- `sichuan/chat/{방코드}` , `sichuan/chat/_lobby` : 채팅
+
+다른 게임 랭킹(`rankings/minesweeper` 등)과 섞이지 않습니다.
+
+## 보안 규칙 (권장)
+지금 데이터베이스는 "누구나 읽기/쓰기"로 열려 있어서 누구든 데이터를 지울 수 있습니다.
+`database.rules.json`의 내용을 Firebase 콘솔 → Realtime Database → **규칙** 탭에 붙여 넣으면,
+사용하는 경로(`rankings`, `sichuan`)만 열어 두고 기록 형식을 검사합니다. 기존 게임들도 `rankings/` 아래만 쓰고 있다면 그대로 동작합니다.
+로그인 기능이 없어서 마음먹고 기록을 조작하는 것까지 막을 수는 없습니다.

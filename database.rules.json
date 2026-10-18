@@ -1,0 +1,41 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rankings": {
+      ".read": true,
+      "$game": {
+        ".write": "$game !== 'sichuan'"
+      },
+      "sichuan": {
+        "$stage": {
+          ".validate": "$stage.matches(/^s[0-9][0-9]$/)",
+          "$player": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['name', 'time']) && newData.child('name').isString() && newData.child('name').val().length <= 10 && newData.child('time').isNumber() && newData.child('time').val() > 3000"
+          }
+        }
+      }
+    },
+    "sichuan": {
+      ".read": true,
+      "rooms": {
+        "$room": {
+          ".write": true,
+          ".validate": "$room.matches(/^[A-Z0-9]{4}$/)"
+        }
+      },
+      "chat": {
+        "$room": {
+          ".write": true,
+          "$msg": {
+            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 200"
+          }
+        }
+      },
+      "_time": {
+        "$uid": { ".write": true }
+      }
+    }
+  }
+}

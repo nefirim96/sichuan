@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>사천성 아케이드</title>
+  <meta name="robots" content="noai, noimageai">
+  <meta name="googlebot" content="noai, noimageai">
+  <meta name="description" content="원조 마작패부터 귀여운 동물, 과일까지! 50개 스테이지와 랭킹, 친구와 채팅하며 대결하는 사천성.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 80'><rect x='4' y='4' width='52' height='72' rx='9' fill='%23fffaf0' stroke='%23c9b78a' stroke-width='4'/><text x='30' y='52' font-size='38' text-anchor='middle' fill='%23c62f2a' font-family='serif' font-weight='700'>中</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <button class="brand" id="goHome" title="처음 화면">
+      <span class="brand-tile">中</span><span>사천성</span>
+    </button>
+    <nav class="top-actions">
+      <button class="chip" id="nickChip" title="닉네임 바꾸기">🙂 <span id="nickLabel">닉네임</span></button>
+      <button class="btn ghost" id="openRank">🏆 <span class="hide-sm">랭킹</span></button>
+      <button class="btn ghost" id="openMulti">👥 <span class="hide-sm">친구랑</span></button>
+      <button class="btn ghost icon" id="muteBtn" title="소리">🔊</button>
+    </nav>
+  </header>
+
+  <!-- 처음 화면 -->
+  <main id="home" class="screen active">
+    <section class="hero">
+      <div>
+        <h1>같은 그림 두 개를,<br>두 번 이하로 꺾어서 연결!</h1>
+        <p class="sub">50개 스테이지는 전부 클리어할 수 있게 만들어져 있어요. 막히면 섞기·힌트를 써 보세요.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn primary big" id="continueBtn">▶ 이어하기</button>
+        <button class="btn big" id="endlessBtn">♾ 무한 연습</button>
+        <button class="btn big" id="howBtn">❔ 규칙</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>타일 테마</h2><span class="muted">테마가 달라도 같은 스테이지는 같은 판이라 랭킹은 공평해요</span></div>
+      <div class="themes" id="themes"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>스테이지</h2><span class="muted" id="progressLabel"></span></div>
+      <div class="stages" id="stages"></div>
+    </section>
+    <footer class="foot">사천성 아케이드 · 기록은 이 브라우저와 랭킹 서버에 저장돼요</footer>
+  </main>
+
+  <!-- 친구랑 방 화면 -->
+  <main id="room" class="screen">
+    <div class="room-layout">
+      <section class="panel room-main">
+        <div class="panel-head">
+          <h2>방 <span class="code" id="roomCode">----</span></h2>
+          <div class="row gap">
+            <button class="btn small" id="copyLink">🔗 초대 링크 복사</button>
+            <button class="btn small danger" id="leaveRoom">나가기</button>
+          </div>
+        </div>
+        <div class="room-settings" id="roomSettings"></div>
+        <h3>참가자</h3>
+        <ul class="players" id="roomPlayers"></ul>
+        <p class="muted small">방장이 스테이지와 테마를 고르고 시작하면 모두 같은 판으로 동시에 대결해요. 먼저 다 지우는 사람이 1등!</p>
+      </section>
+      <section class="panel chat-panel" id="roomChatBox"></section>
+    </div>
+  </main>
+
+  <!-- 게임 화면 -->
+  <main id="game" class="screen">
+    <div class="game-bar">
+      <div class="gb-left">
+        <button class="btn small" id="quitBtn">◀ 나가기</button>
+        <div class="stage-title" id="stageTitle">스테이지 1</div>
+      </div>
+      <div class="gb-stats">
+        <div class="stat"><span class="k">시간</span><span class="v mono" id="timer">0:00.0</span></div>
+        <div class="stat"><span class="k">남은 패</span><span class="v mono" id="remain">0</span></div>
+        <div class="stat pen"><span class="k">벌점</span><span class="v mono" id="penalty">+0초</span></div>
+      </div>
+      <div class="gb-tools">
+        <button class="btn small" id="hintBtn" title="힌트 (+10초)">💡 힌트</button>
+        <button class="btn small" id="shuffleBtn" title="섞기 (+20초)">🔀 섞기</button>
+        <button class="btn small" id="undoBtn" title="되돌리기 (+5초)">↩ 되돌리기</button>
+        <button class="btn small" id="pauseBtn" title="일시정지">⏸</button>
+        <button class="btn small" id="chatToggle" title="채팅">💬<span class="badge" id="chatBadge"></span></button>
+      </div>
+    </div>
+    <div class="game-body">
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="board"></div>
+        <div class="overlay" id="boardOverlay"></div>
+      </div>
+      <aside class="side" id="side">
+        <div class="side-players" id="sidePlayers"></div>
+        <div class="chat-panel" id="gameChatBox"></div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="modal-bg" id="modalBg"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="js/guard.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/stages.js"></script>
+  <script src="js/tiles.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
