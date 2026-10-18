@@ -43,54 +43,53 @@
       if (a === b || this.t[a] < 0 || this.t[a] !== this.t[b] || !this.isFree(a) || !this.isFree(b)) return null;
       return this.connect(a, b);
     }
-    /* 사천성 연결: 반 칸 격자 위에서 꺾기 2번 이하의 직선 경로.
-     * 선은 두 패 중 높은 쪽 층(L)의 높이로 그어짐: L층 이상의 다른 패는 통과 못 하고, 그보다 낮은 패 위로는 지나감. */
+    /* 사천성 연결: 반 칸 단위 "점" 격자 위에서 패 중심 → 패 중심, 꺾기 2번 이하의 직선 경로.
+     * 패 하나는 테두리를 포함한 정사각형(3x3 점)을 막음 → 붙어 있는 패 사이 틈으로는 못 지나감.
+     * 선은 두 패 중 높은 쪽 층(L)의 높이로 그어짐: L층 이상의 다른 패는 통과 못 하고, 그보다 낮은 패 위로는 지나감.
+     * 가능한 경로 중 꺾기가 적고 가장 짧은 것을 고름. */
     connect(a, b) {
-      const P = 2, CW = this.spanX + P * 2, CH = this.spanY + P * 2, N = CW * CH;
+      const P = 2, GW = this.spanX + P * 2 + 1, GH = this.spanY + P * 2 + 1;
       const L = Math.max(this.pos[a].z, this.pos[b].z);
-      if (!this._buf || this._buf.pos !== this.pos) {
-        this._buf = { N, pos: this.pos, blocked: new Uint8Array(N), target: new Uint8Array(N), seg: new Int8Array(N), par: new Int32Array(N),
-          cells: this.pos.map((p) => { const c = []; for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) c.push((p.y + P + dy) * CW + p.x + P + dx); return c; }) };
-      }
-      const { blocked, target, seg, par, cells } = this._buf;
-      blocked.fill(0); target.fill(0); seg.fill(9); par.fill(-1);
-      const cellsOf = (k) => cells[k];
+      if (!this._buf || this._buf.pos !== this.pos) this._buf = { pos: this.pos, blk: new Uint8Array(GW * GH) };
+      const blk = this._buf.blk;
+      blk.fill(0);
       for (let k = 0; k < this.t.length; k++) {
         if (this.t[k] < 0 || k === a || k === b || this.pos[k].z < L) continue;
-        const cc = cells[k]; blocked[cc[0]] = 1; blocked[cc[1]] = 1; blocked[cc[2]] = 1; blocked[cc[3]] = 1;
+        const p = this.pos[k];
+        for (let dy = 0; dy <= 2; dy++) for (let dx = 0; dx <= 2; dx++) blk[(p.y + P + dy) * GW + p.x + P + dx] = 1;
       }
-      for (const c of cellsOf(b)) target[c] = 1;
-      let front = cellsOf(a).slice();
-      for (const c of front) seg[c] = -1;
-      const D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-      for (let s = 0; s < 3; s++) {
-        const next = [];
-        for (const c of front) {
-          const cx = c % CW, cy = (c / CW) | 0;
-          for (const [dx, dy] of D) {
-            let x = cx + dx, y = cy + dy;
-            while (x >= 0 && y >= 0 && x < CW && y < CH) {
-              const i = y * CW + x;
-              if (target[i]) {
-                // 경로 복원 (꺾이는 점들), 패 중심 좌표(타일 단위)로 변환
-                const pts = [i, c]; let q = c;
-                while (par[q] >= 0) { q = par[q]; pts.push(q); }
-                const toG = (j) => [((j % CW) - P + 0.5) / 2 + 0.5, (((j / CW) | 0) - P + 0.5) / 2 + 0.5];
-                const ca = this.pos[a], cb = this.pos[b];
-                const out = [[(cb.x + 1) / 2 + 0.5, (cb.y + 1) / 2 + 0.5]].concat(pts.map(toG));
-                out.push([(ca.x + 1) / 2 + 0.5, (ca.y + 1) / 2 + 0.5]);
-                out.reverse(); out.z = L;
-                return out;
-              }
-              if (blocked[i]) break;
-              if (seg[i] > s) { seg[i] = s; par[i] = c; next.push(i); }
-              x += dx; y += dy;
-            }
-          }
+      const free = (x, y) => x >= 0 && y >= 0 && x < GW && y < GH && !blk[y * GW + x];
+      const clear = (x1, y1, x2, y2) => {
+        if (x1 === x2) { const s = Math.min(y1, y2), e = Math.max(y1, y2); for (let y = s; y <= e; y++) if (blk[y * GW + x1]) return false; return true; }
+        const s = Math.min(x1, x2), e = Math.max(x1, x2); for (let x = s; x <= e; x++) if (blk[y1 * GW + x]) return false; return true;
+      };
+      const ax = this.pos[a].x + 1 + P, ay = this.pos[a].y + 1 + P, bx = this.pos[b].x + 1 + P, by = this.pos[b].y + 1 + P;
+      let best = null, bestCost = 1e9;
+      const consider = (pts) => {
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) len += Math.abs(pts[i][0] - pts[i - 1][0]) + Math.abs(pts[i][1] - pts[i - 1][1]);
+        const cost = (pts.length - 2) * 1000 + len;
+        if (cost < bestCost) { bestCost = cost; best = pts; }
+      };
+      if ((ax === bx || ay === by) && clear(ax, ay, bx, by)) consider([[ax, ay], [bx, by]]);
+      if (!best) {
+        if (free(ax, by) && clear(ax, ay, ax, by) && clear(ax, by, bx, by)) consider([[ax, ay], [ax, by], [bx, by]]);
+        if (free(bx, ay) && clear(ax, ay, bx, ay) && clear(bx, ay, bx, by)) consider([[ax, ay], [bx, ay], [bx, by]]);
+      }
+      if (!best) {
+        for (let x = 0; x < GW; x++) {
+          if (x === ax || x === bx || ay === by) continue;
+          if (free(x, ay) && free(x, by) && clear(ax, ay, x, ay) && clear(x, ay, x, by) && clear(x, by, bx, by)) consider([[ax, ay], [x, ay], [x, by], [bx, by]]);
         }
-        front = next;
+        for (let y = 0; y < GH; y++) {
+          if (y === ay || y === by || ax === bx) continue;
+          if (free(ax, y) && free(bx, y) && clear(ax, ay, ax, y) && clear(ax, y, bx, y) && clear(bx, y, bx, by)) consider([[ax, ay], [ax, y], [bx, y], [bx, by]]);
+        }
       }
-      return null;
+      if (!best) return null;
+      const out = best.map(([x, y]) => [(x - P) / 2 + 0.5, (y - P) / 2 + 0.5]);
+      out.z = L; out.za = this.pos[a].z; out.zb = this.pos[b].z;
+      return out;
     }
     remove(a, b) { this.t[a] = -1; this.t[b] = -1; }
     restore(a, b, t) { this.t[a] = t; this.t[b] = t; }
@@ -143,9 +142,7 @@
     const cells = stage.pos.map((_, i) => i);
     for (let attempt = 0; attempt < 600; attempt++) {
       const b = new LayerBoard(stage.pos, topo);
-      if (gen._buf) b._buf = gen._buf;
       const pairs = construct(b, cells, rand);
-      gen._buf = b._buf;
       if (!pairs) continue;
       const types = pairs.map((_, i) => i % stage.types);
       shuffleArr(types, rand);
