@@ -39,7 +39,59 @@
       // 위에 조금이라도 겹친 패가 없으면 선택 가능 (양옆은 따지지 않음)
       return !tp.above[k].some((j) => T[j] >= 0);
     }
-    match(a, b) { return a !== b && this.t[a] >= 0 && this.t[a] === this.t[b] && this.isFree(a) && this.isFree(b) ? [] : null; }
+    match(a, b) {
+      if (a === b || this.t[a] < 0 || this.t[a] !== this.t[b] || !this.isFree(a) || !this.isFree(b)) return null;
+      return this.connect(a, b);
+    }
+    /* 사천성 연결: 반 칸 격자 위에서 꺾기 2번 이하의 직선 경로.
+     * 선은 두 패 중 높은 쪽 층(L)의 높이로 그어짐: L층 이상의 다른 패는 통과 못 하고, 그보다 낮은 패 위로는 지나감. */
+    connect(a, b) {
+      const P = 2, CW = this.spanX + P * 2, CH = this.spanY + P * 2, N = CW * CH;
+      const L = Math.max(this.pos[a].z, this.pos[b].z);
+      if (!this._buf || this._buf.pos !== this.pos) {
+        this._buf = { N, pos: this.pos, blocked: new Uint8Array(N), target: new Uint8Array(N), seg: new Int8Array(N), par: new Int32Array(N),
+          cells: this.pos.map((p) => { const c = []; for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) c.push((p.y + P + dy) * CW + p.x + P + dx); return c; }) };
+      }
+      const { blocked, target, seg, par, cells } = this._buf;
+      blocked.fill(0); target.fill(0); seg.fill(9); par.fill(-1);
+      const cellsOf = (k) => cells[k];
+      for (let k = 0; k < this.t.length; k++) {
+        if (this.t[k] < 0 || k === a || k === b || this.pos[k].z < L) continue;
+        const cc = cells[k]; blocked[cc[0]] = 1; blocked[cc[1]] = 1; blocked[cc[2]] = 1; blocked[cc[3]] = 1;
+      }
+      for (const c of cellsOf(b)) target[c] = 1;
+      let front = cellsOf(a).slice();
+      for (const c of front) seg[c] = -1;
+      const D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (let s = 0; s < 3; s++) {
+        const next = [];
+        for (const c of front) {
+          const cx = c % CW, cy = (c / CW) | 0;
+          for (const [dx, dy] of D) {
+            let x = cx + dx, y = cy + dy;
+            while (x >= 0 && y >= 0 && x < CW && y < CH) {
+              const i = y * CW + x;
+              if (target[i]) {
+                // 경로 복원 (꺾이는 점들), 패 중심 좌표(타일 단위)로 변환
+                const pts = [i, c]; let q = c;
+                while (par[q] >= 0) { q = par[q]; pts.push(q); }
+                const toG = (j) => [((j % CW) - P + 0.5) / 2 + 0.5, (((j / CW) | 0) - P + 0.5) / 2 + 0.5];
+                const ca = this.pos[a], cb = this.pos[b];
+                const out = [[(cb.x + 1) / 2 + 0.5, (cb.y + 1) / 2 + 0.5]].concat(pts.map(toG));
+                out.push([(ca.x + 1) / 2 + 0.5, (ca.y + 1) / 2 + 0.5]);
+                out.reverse(); out.z = L;
+                return out;
+              }
+              if (blocked[i]) break;
+              if (seg[i] > s) { seg[i] = s; par[i] = c; next.push(i); }
+              x += dx; y += dy;
+            }
+          }
+        }
+        front = next;
+      }
+      return null;
+    }
     remove(a, b) { this.t[a] = -1; this.t[b] = -1; }
     restore(a, b, t) { this.t[a] = t; this.t[b] = t; }
     findMoveKeys() { return this.findMove(); }
@@ -48,8 +100,9 @@
       for (const k of this.keys()) {
         if (!this.isFree(k)) continue;
         const ty = this.t[k];
-        if (by.has(ty)) return [by.get(ty), k];
-        by.set(ty, k);
+        if (!by.has(ty)) by.set(ty, []);
+        for (const j of by.get(ty)) if (this.connect(j, k)) return [j, k];
+        by.get(ty).push(k);
       }
       return null;
     }
@@ -61,31 +114,38 @@
     const T = board.t, tp = board.topo;
     for (const k of cells) T[k] = 0;
     const occ = (j) => T[j] >= 0;
-    const free = (k) => !tp.above[k].some(occ) && !(tp.left[k].some(occ) && tp.right[k].some(occ));
+    const free = (k) => !tp.above[k].some(occ);
     const pairs = [];
     let left = cells.length;
     while (left > 0) {
       const f = cells.filter((k) => T[k] >= 0 && free(k));
       if (f.length < 2) { for (const k of cells) T[k] = -1; return null; }
-      // 높은 층, 많이 쌓인 곳부터 걷어 내야 마지막에 한 줄 탑만 남는 상황을 피함
+      // 높은 층부터 걷어 내야 마지막에 한 줄 탑만 남는 상황을 피함
       const w = (k) => board.pos[k].z * 2 + (tp.below[k].length ? 1 : 0) + rand() * 2.5;
       f.sort((p, q) => w(q) - w(p));
-      const a = f[0];
-      const rest = f.slice(1);
-      const b = rand() < 0.6 ? rest[Math.floor(rand() * rest.length)] : rest[0];
-      T[a] = -1; T[b] = -1; left -= 2;
-      pairs.push([a, b]);
+      let pair = null;
+      for (let i = 0; i < f.length && !pair; i++) {
+        const a = f[i];
+        const cand = f.filter((k) => k !== a && board.connect(a, k));
+        if (cand.length) pair = [a, cand[Math.floor(rand() * cand.length)]];
+      }
+      if (!pair) { for (const k of cells) T[k] = -1; return null; }
+      T[pair[0]] = -1; T[pair[1]] = -1; left -= 2;
+      pairs.push(pair);
     }
     return pairs;
   }
 
+  const gen = {};
   function generate(stage, seed) {
     const rand = rng(seed);
     const topo = topology(stage.pos);
     const cells = stage.pos.map((_, i) => i);
     for (let attempt = 0; attempt < 600; attempt++) {
       const b = new LayerBoard(stage.pos, topo);
+      if (gen._buf) b._buf = gen._buf;
       const pairs = construct(b, cells, rand);
+      gen._buf = b._buf;
       if (!pairs) continue;
       const types = pairs.map((_, i) => i % stage.types);
       shuffleArr(types, rand);

@@ -125,7 +125,7 @@
     s: { key: 's', name: '사천성', list: () => Stages.list, cleared: 'cleared', best: 'best', idBase: 0,
       desc: '같은 그림 두 개를 꺾기 2번 이하의 선으로 연결해서 지워요.' },
     l: { key: 'l', name: '겹겹 모드', list: () => Layers.list, cleared: 'clearedL', best: 'bestL', idBase: 100,
-      desc: '2~4층으로 쌓인 패! 위에 겹쳐진 패가 없는 패끼리 맞출 수 있어요. 어두운 패는 위에 다른 패가 걸쳐 있어서 아직 못 빼요.' },
+      desc: '2~4층으로 쌓인 패! 위에 겹쳐진 패가 없는 패끼리, 사천성처럼 꺾기 2번 이하의 선으로 이어지면 지워져요. 선은 두 패 중 높은 층 높이로 그어져서 더 낮은 패 위로는 지나갈 수 있어요. 어두운 패는 위에 다른 패가 걸쳐 있어 아직 못 빼요.' },
   };
   const modeOf = (st) => MODES[st.kind === 'layer' ? 'l' : 's'];
   const stageCount = (st) => (st.kind === 'layer' ? st.count : st.cells.length);
@@ -185,7 +185,7 @@
       <li><b>🀄 사천성</b>: 같은 그림의 패 두 개를 차례로 누르면 지워져요.</li>
       <li>두 패 사이를 <b>직선 3개 이하(꺾기 2번 이하)</b>로 연결할 수 있어야 해요. 다른 패를 통과할 순 없지만 판 바깥 테두리로는 돌아갈 수 있어요.</li>
       <li>모든 패를 지우면 클리어! 걸린 시간이 랭킹에 올라가요.</li>
-      <li><b>🧱 겹겹 모드</b>: 패가 2~4층으로 쌓여 있어요. <b>위에 겹쳐진 패가 하나도 없는 패</b>끼리 맞출 수 있어요 (선 연결은 필요 없어요). 어둡게 보이는 패는 아직 뺄 수 없는 패예요.</li>
+      <li><b>🧱 겹겹 모드</b>: 패가 2~4층으로 쌓여 있어요. <b>위에 겹쳐진 패가 없는 패</b>끼리, 사천성처럼 <b>꺾기 2번 이하의 선</b>으로 이어져야 해요. 선은 두 패 중 높은 층의 높이로 그어져서, 그보다 낮은 층의 패 위로는 지나갈 수 있지만 같은 층이나 더 높은 패는 통과할 수 없어요. 어둡게 보이는 패는 아직 뺄 수 없는 패예요.</li>
       <li>💡 힌트 +10초, 🔀 섞기 +20초, ↩ 되돌리기 +5초 벌점이 붙어요.</li>
       <li>더 이상 지울 패가 없으면 벌점 없이 자동으로 섞어 줘요. 섞은 판도 항상 클리어할 수 있어요.</li>
     </ol>
@@ -325,7 +325,7 @@
     const gm = game.gm, el = $('#board'), b = game.board;
     let pts;
     if (path && path.length) {
-      pts = path.map(([x, y]) => { const p = dispXY(gm, x, y, 0); return `${p.cx},${p.cy - 2}`; }).join(' ');
+      pts = path.map(([x, y]) => { const p = dispXY(gm, x, y, path.z || 0); return `${p.cx},${p.cy - 2}`; }).join(' ');
     } else if (b.kind === 'layer' && ka !== undefined) {
       // 겹겹 모드: 두 패를 잇는 부드러운 곡선
       const c = [ka, kb].map((k) => { const p = place(b, k); return dispXY(gm, p.gx, p.gy, p.z); });
