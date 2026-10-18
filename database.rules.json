@@ -9,7 +9,7 @@
       },
       "sichuan": {
         "$stage": {
-          ".validate": "$stage.matches(/^s[0-9][0-9]$/)",
+          ".validate": "$stage.matches(/^[sl][0-9][0-9]$/)",
           "$player": {
             ".write": true,
             ".validate": "newData.hasChildren(['name', 'time']) && newData.child('name').isString() && newData.child('name').val().length <= 10 && newData.child('time').isNumber() && newData.child('time').val() > 3000"

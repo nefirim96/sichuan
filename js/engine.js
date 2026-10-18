@@ -78,6 +78,21 @@
       }
       return best;
     }
+    // 공통 인터페이스 (겹겹 모드 LayerBoard와 같은 이름). 키 = 칸 번호
+    get kind() { return 'flat'; }
+    keys() { return this.tiles().map(([x, y]) => y * this.GW + x); }
+    xy(k) { return [k % this.GW, Math.floor(k / this.GW)]; }
+    count() { return this.tiles().length; }
+    typeOf(k) { return this.g[k]; }
+    isFree() { return true; }
+    match(a, b) {
+      if (a === b || this.g[a] < 0 || this.g[a] !== this.g[b]) return null;
+      const [x1, y1] = this.xy(a), [x2, y2] = this.xy(b);
+      return this.path(x1, y1, x2, y2);
+    }
+    remove(a, b) { this.g[a] = -1; this.g[b] = -1; }
+    restore(a, b, t) { this.g[a] = t; this.g[b] = t; }
+    findMoveKeys() { const m = this.findMove(); return m ? m.map(([x, y]) => y * this.GW + x) : null; }
     tiles() {
       const out = [];
       for (let y = 1; y <= this.H; y++) for (let x = 1; x <= this.W; x++) if (this.get(x, y) >= 0) out.push([x, y]);

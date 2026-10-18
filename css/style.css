@@ -153,7 +153,7 @@ h1, h2, h3, .brand, .btn, .chip, .stage-title, .code { font-family: 'Jua', 'Gowu
   content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .18;
   background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 6px);
 }
-.board { position: relative; }
+.board { position: relative; isolation: isolate; }
 .board .path { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 50; }
 .board .path polyline { fill: none; stroke: #ffe066; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255, 224, 102, .9)); animation: pathfade .45s ease-out forwards; }
 @keyframes pathfade { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -277,3 +277,12 @@ input:focus, select:focus { outline: none; border-color: var(--coral); }
   .chip { max-width: 110px; }
   .hero { padding: 20px; }
 }
+
+/* 겹겹 모드 */
+.mode-tabs { margin: 0; }
+.mode-desc { margin: -4px 0 12px; }
+.board.layered .tile { box-shadow: -1px 0 0 var(--tile-edge), 0 var(--d, 4px) 0 var(--tile-edge), -2px calc(var(--d, 4px) + 1px) 0 var(--tile-edge-2), 0 calc(var(--d, 4px) + 3px) 7px rgba(0, 0, 0, .38); }
+.board.layered .tile.locked { filter: brightness(.78) saturate(.75); cursor: not-allowed; }
+.board.layered .tile.locked:hover { filter: brightness(.78) saturate(.75); }
+.board.layered .tile.sel { box-shadow: 0 0 0 3px var(--coral), 0 var(--d, 4px) 0 var(--tile-edge), 0 12px 18px rgba(0, 0, 0, .35); }
+.board.layered .tile.sel, .board.layered .tile.hint { z-index: 9999 !important; }
