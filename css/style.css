@@ -286,3 +286,4 @@ input:focus, select:focus { outline: none; border-color: var(--coral); }
 .board.layered .tile.locked:hover { filter: brightness(.78) saturate(.75); }
 .board.layered .tile.sel { box-shadow: 0 0 0 3px var(--coral), 0 var(--d, 4px) 0 var(--tile-edge), 0 12px 18px rgba(0, 0, 0, .35); }
 .board.layered .tile.sel, .board.layered .tile.hint { z-index: 9999 !important; }
+.board.layered .path { z-index: 99999; }

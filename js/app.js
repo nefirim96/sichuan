@@ -125,7 +125,7 @@
     s: { key: 's', name: '사천성', list: () => Stages.list, cleared: 'cleared', best: 'best', idBase: 0,
       desc: '같은 그림 두 개를 꺾기 2번 이하의 선으로 연결해서 지워요.' },
     l: { key: 'l', name: '겹겹 모드', list: () => Layers.list, cleared: 'clearedL', best: 'bestL', idBase: 100,
-      desc: '2~4층으로 쌓인 패! 위에 덮인 패가 없고 왼쪽이나 오른쪽이 비어 있는 패끼리만 맞출 수 있어요. 어두운 패는 아직 못 빼는 패예요.' },
+      desc: '2~4층으로 쌓인 패! 위에 겹쳐진 패가 없는 패끼리 맞출 수 있어요. 어두운 패는 위에 다른 패가 걸쳐 있어서 아직 못 빼요.' },
   };
   const modeOf = (st) => MODES[st.kind === 'layer' ? 'l' : 's'];
   const stageCount = (st) => (st.kind === 'layer' ? st.count : st.cells.length);
@@ -185,7 +185,7 @@
       <li><b>🀄 사천성</b>: 같은 그림의 패 두 개를 차례로 누르면 지워져요.</li>
       <li>두 패 사이를 <b>직선 3개 이하(꺾기 2번 이하)</b>로 연결할 수 있어야 해요. 다른 패를 통과할 순 없지만 판 바깥 테두리로는 돌아갈 수 있어요.</li>
       <li>모든 패를 지우면 클리어! 걸린 시간이 랭킹에 올라가요.</li>
-      <li><b>🧱 겹겹 모드</b>: 패가 2~4층으로 쌓여 있어요. <b>위에 덮인 패가 없고, 왼쪽이나 오른쪽 중 한쪽이 비어 있는 패</b>끼리만 맞출 수 있어요 (선 연결은 필요 없어요). 어둡게 보이는 패는 아직 뺄 수 없는 패예요.</li>
+      <li><b>🧱 겹겹 모드</b>: 패가 2~4층으로 쌓여 있어요. <b>위에 겹쳐진 패가 하나도 없는 패</b>끼리 맞출 수 있어요 (선 연결은 필요 없어요). 어둡게 보이는 패는 아직 뺄 수 없는 패예요.</li>
       <li>💡 힌트 +10초, 🔀 섞기 +20초, ↩ 되돌리기 +5초 벌점이 붙어요.</li>
       <li>더 이상 지울 패가 없으면 벌점 없이 자동으로 섞어 줘요. 섞은 판도 항상 클리어할 수 있어요.</li>
     </ol>
@@ -321,10 +321,25 @@
   }
   window.addEventListener('resize', () => { clearTimeout(layout.t); layout.t = setTimeout(layout, 60); });
 
-  function drawPath(path) {
-    if (!path || !path.length) return;
-    const gm = game.gm, el = $('#board');
-    const pts = path.map(([x, y]) => { const p = dispXY(gm, x, y, 0); return `${p.cx},${p.cy - 2}`; }).join(' ');
+  function drawPath(path, ka, kb) {
+    const gm = game.gm, el = $('#board'), b = game.board;
+    let pts;
+    if (path && path.length) {
+      pts = path.map(([x, y]) => { const p = dispXY(gm, x, y, 0); return `${p.cx},${p.cy - 2}`; }).join(' ');
+    } else if (b.kind === 'layer' && ka !== undefined) {
+      // 겹겹 모드: 두 패를 잇는 부드러운 곡선
+      const c = [ka, kb].map((k) => { const p = place(b, k); return dispXY(gm, p.gx, p.gy, p.z); });
+      const mx = (c[0].cx + c[1].cx) / 2, my = (c[0].cy + c[1].cy) / 2;
+      const dx = c[1].cx - c[0].cx, dy = c[1].cy - c[0].cy, len = Math.hypot(dx, dy) || 1;
+      const bend = Math.min(80, len * 0.25);
+      const qx = mx - (dy / len) * bend, qy = my + (dx / len) * bend - bend * 0.3;
+      const P = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16, u = 1 - t;
+        P.push(`${u * u * c[0].cx + 2 * u * t * qx + t * t * c[1].cx},${u * u * (c[0].cy - 4) + 2 * u * t * qy + t * t * (c[1].cy - 4)}`);
+      }
+      pts = P.join(' ');
+    } else return;
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     s.setAttribute('class', 'path'); s.setAttribute('width', gm.W); s.setAttribute('height', gm.H);
     s.innerHTML = `<polyline points="${pts}"/>`;
@@ -340,7 +355,7 @@
     const b = g.board;
     if (b.typeOf(k) < 0) return;
     const el = g.els.get(k);
-    if (!b.isFree(k)) { shake(el); toast('위에 패가 있거나 양옆이 막혀 있어요', 1200); return; }
+    if (!b.isFree(k)) { shake(el); toast('위에 다른 패가 걸쳐 있어요', 1200); return; }
     if (g.sel === null || g.sel === undefined) { g.sel = k; el.classList.add('sel'); beep('pick'); return; }
     const sk = g.sel, sel = g.els.get(sk);
     if (sk === k) { el.classList.remove('sel'); g.sel = null; return; }
@@ -358,7 +373,7 @@
     b.remove(sk, k);
     g.undo.push([sk, k, t]);
     g.sel = null;
-    drawPath(path);
+    drawPath(path, sk, k);
     [sel, el].forEach((d) => { if (d) { d.classList.remove('sel'); d.classList.add('gone'); } });
     g.els.delete(sk); g.els.delete(k);
     setTimeout(() => { sel && sel.remove(); el.remove(); }, 340);

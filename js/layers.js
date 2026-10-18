@@ -36,9 +36,8 @@
     typeOf(k) { return this.t[k]; }
     isFree(k) {
       const T = this.t, tp = this.topo;
-      if (tp.above[k].some((j) => T[j] >= 0)) return false;
-      const l = tp.left[k].some((j) => T[j] >= 0), r = tp.right[k].some((j) => T[j] >= 0);
-      return !(l && r);
+      // 위에 조금이라도 겹친 패가 없으면 선택 가능 (양옆은 따지지 않음)
+      return !tp.above[k].some((j) => T[j] >= 0);
     }
     match(a, b) { return a !== b && this.t[a] >= 0 && this.t[a] === this.t[b] && this.isFree(a) && this.isFree(b) ? [] : null; }
     remove(a, b) { this.t[a] = -1; this.t[b] = -1; }
